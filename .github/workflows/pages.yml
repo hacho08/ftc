@@ -24,11 +24,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Pages
-        uses: actions/configure-pages@v5       
+        uses: actions/configure-pages@v5   
+      - name: Debug: list files to be deployed
+        run: |
+          echo "PWD=$(pwd)"
+          echo "Listing www:"
+          ls -la www || true
+          echo "Try to print first 5 lines of index.html:"
+          head -n 5 ftc/www/index.html || true
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "ftc/www"    # 웹 루트 경로
+          path: "www"    # 웹 루트 경로
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
