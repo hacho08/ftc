@@ -28,7 +28,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "."   # 정적 파일 위치(루트가 기본)
+          path: "www"    # 웹 루트 경로
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
