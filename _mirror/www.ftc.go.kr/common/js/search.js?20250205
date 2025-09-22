@@ -1,0 +1,159 @@
+$(document).ready(function () {
+    const $searchForm = $('#search-form');
+    const $searchInput = $('#search-total-input-id');
+    const $recentSearchList = $('#recent-search-list');
+    const $deleteAll = $('#delete-all');
+    const maxRecentSearches = 10; // 최대 10개 유지
+    // 로컬 스토리지에서 최근 검색어 불러오기
+    function getRecentSearches() {
+        const storedSearches = localStorage.getItem('recentSearches');
+        return storedSearches ? JSON.parse(storedSearches) : [];
+    }
+    // 로컬 스토리지에 최근 검색어 저장하기
+    function saveRecentSearches(searches) {
+        localStorage.setItem('recentSearches', JSON.stringify(searches));
+    }
+    // 최근 검색어 UI 업데이트
+    function updateRecentSearchUI() {
+        const searches = getRecentSearches();
+        $recentSearchList.empty();
+        searches.forEach((search, index) => {
+            $recentSearchList.append('<li><a href="./search.do?key=761&q=' + escapeHTML(search) + '"><span class="word-txt">' + escapeHTML(search) + '</span></a><button class="btn btn-ico ico-del sm" data-index="' + index + '"><span class="sr-only">삭제</span></button></li>');
+        });
+    }
+    // 검색어 저장 로직
+    function saveSearch(searchValue) {
+        if (searchValue) {
+            let recentSearches = getRecentSearches();
+            // 기존 검색어 삭제 및 맨 앞으로 추가
+            recentSearches = recentSearches.filter(search => search !== searchValue);
+            recentSearches.unshift(searchValue);
+            // 최대 10개 유지
+            if (recentSearches.length > maxRecentSearches) {
+                recentSearches.pop();
+            }
+            // 저장하고 UI 업데이트
+            saveRecentSearches(recentSearches);
+            updateRecentSearchUI();
+        }
+    }
+    // 폼 제출 시 처리
+    $searchForm.on('submit', function () {
+        const searchValue = $searchInput.val().trim();
+        // 검색어 저장
+        saveSearch(searchValue);
+        // 폼은 정상적으로 전송
+        return true;
+    });
+    // 개별 검색어 삭제
+    $recentSearchList.on('click', '.ico-del', function () {
+        const index = $(this).data('index');
+        let recentSearches = getRecentSearches();
+        recentSearches.splice(index, 1); // 해당 인덱스 항목 삭제
+        saveRecentSearches(recentSearches);
+        updateRecentSearchUI();
+    });
+    $deleteAll.on('click', function() {
+        localStorage.removeItem('recentSearches');
+        updateRecentSearchUI();
+    });
+    // 초기화
+    updateRecentSearchUI();
+
+    $('#buttonSearchOpen').on('click', searchRanking);
+    
+    function searchRanking() {
+        // JSON 호출
+        $.ajax({
+            url: "/searchPopularKeyword.do",
+            method: "GET",
+            dataType: "json",
+            success: function (data) {
+                renderRanking("panel_search_01", data.DAY);   // 일간
+                renderRanking("panel_search_02", data.WEEK);  // 주간
+                renderRanking("panel_search_03", data.MONTH); // 월간
+                common.popupEvent('#popTotalSch'); // 통합검색 오픈
+            },
+            error: function () {
+                console.error("인기 검색어 데이터를 불러오는 데 실패했습니다.");
+            }
+        });
+
+        // HTML에 데이터를 삽입하는 함수
+        function renderRanking(panelId, listData) {
+            let html = ""; // 리스트 HTML 초기화
+
+            listData.forEach(function (item) {
+                let rankClass = getRankClass(item.rankChgTyCd);
+
+                html += `
+                <li>
+                    <a href="/www/search.do?key=761&q=${escapeHTML(item.srwrdNm)}">
+                        <span class="ranking-txt">${escapeHTML(item.srwrdNm)}</span>
+                        <span class="ranking-state ${rankClass}">
+                            <em class="sr-only">${getRankText(item.rankChgTyCd)}</em>${getRankChgVal(item.rankChgTyCd, item.rankChgVal)}
+                        </span>
+                    </a>
+                </li>
+            `;
+            });
+
+            // 선택된 패널에 리스트 삽입
+            $(`#${panelId} .list`).html(html);
+        }
+
+        // rankChgTyCd에 따라 순위변경 값 반환
+        function getRankChgVal(rankChgTyCd, rankChgVal) {
+            switch (rankChgTyCd) {
+                case "UP": return rankChgVal;
+                case "DOWN": return rankChgVal;
+                case "SAME": return "";
+                case "NEW" : return "NEW";
+                default: return "";
+            }
+        }
+
+        // rankChgTyCd에 따라 클래스 반환
+        function getRankClass(rankChgTyCd) {
+            switch (rankChgTyCd) {
+                case "UP": return "up";
+                case "DOWN": return "down";
+                case "SAME": return "same";
+                case "NEW" : return "new";
+                default: return "";
+            }
+        }
+
+        // rankChgTyCd에 따라 텍스트 반환
+        function getRankText(rankChgTyCd) {
+            switch (rankChgTyCd) {
+                case "UP": return "상승";
+                case "DOWN": return "하락";
+                case "SAME": return "동일";
+                case "NEW" : return "신규";
+                default: return "";
+            }
+        }
+    }
+
+    $('#search-form').on('submit', function(event) {
+        if( !$(this).find('input[name="q"]').val().trim() ) {
+            event.preventDefault();
+            alert("검색어를 입력해주세요."); 
+        }
+    });
+    
+    function escapeHTML(str) {
+        return str.replace(/[&<>"']/g, function(match) {
+            const escapeMap = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+            };
+            return escapeMap[match];
+        });
+    }
+    
+});
